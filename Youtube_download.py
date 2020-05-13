@@ -13,31 +13,26 @@ class MyLogger(object):
 
 def my_hook(d):
     if d['status'] == 'finished':
-        print('Done downloading, now converting ...')
-
-ydl_opts = {
-    'outtmpl': 'Music_downloads/song.mp3',
-    'format': 'bestaudio/best',
-    'postprocessors': [{
-        'key': 'FFmpegExtractAudio',
-        'preferredcodec': 'mp3',
-        'preferredquality': '320',
-    }],
-    'logger': MyLogger(),
-    'progress_hooks': [my_hook],
-}
+        print('노래 다운로드중!! 곧 재생됩니다!!')
 
 class Youtube_downloader:
+
     def __init__(self):
         pass
-    def download(self, url):
-        song_there = os.path.isfile("Music_downloads/song.mp3")
-        try:
-            if song_there:
-                os.remove("Music_downloads/song.mp3")
-        except PermissionError:
-            print("Wait for the current playing music end or use the 'stop' command")
-            return
-        print("Getting everything ready, playing audio soon")
+    
+    def download(self, number, rink):
+
+        ydl_opts = {
+        'outtmpl': f'Music_downloads/{number} song.mp3',
+        'format': 'bestaudio/best',
+        'postprocessors': [{
+            'key': 'FFmpegExtractAudio',
+            'preferredcodec': 'mp3',
+            'preferredquality': '320',
+        }],
+        'logger': MyLogger(),
+        'progress_hooks': [my_hook],
+        }
+
         with youtube_dl.YoutubeDL(ydl_opts) as ydl:
-            ydl.download([url])
+            ydl.download([f'https://www.youtube.com/watch?v={rink}'])
