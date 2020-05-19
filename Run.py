@@ -22,11 +22,15 @@ YOUTUBE_API_SERVICE_NAME = 'youtube'; YOUTUBE_API_VERSION = 'v3'
 
 bot = commands.Bot(command_prefix='[[')
 
-search_title = []; search_rink = []; music_title = []
+music_title = []; music_rink = []
+
+def is_connected(ctx):
+    voice_client = discord.utils.get(ctx.bot.voice_clients, guild=ctx.guild)
+    return voice_client and voice_client.is_connected()
 
 @bot.event
 async def on_ready():
-    print("{0} 작동!!!!!!!!!!!!!!! {0}".format(" * " * 10))
+    print("\n{0} 작동!!!!!!!!!!!!!!! {0}\n".format(" * " * 10))
 
     while True:
         await bot.change_presence(status=discord.Status.online,
@@ -57,41 +61,35 @@ async def 명령어(ctx):  # 전체 명령어
     embed.add_field(name='날씨', value='날씨 뒤에 지역명 붙여주시면되요!!', inline=False)
     await ctx.send(embed=embed)
 
-
 @bot.command()  # 인사
 async def 안녕(ctx):
     await ctx.send("안녕!")
 
-
 @bot.command()  # 멜빵
 async def 멜빵(ctx):
     await ctx.send('야!!!!')
-
 
 @bot.command(pass_context=True)  # 사용자가 들어가있는 통화방으로 들어감
 async def 들어와(ctx):
     channel = ctx.author.voice.channel
     await channel.connect()
 
-
 @bot.command(pass_context=True)  # 통화방 나감
 async def 나가(ctx):
     await ctx.voice_client.disconnect()
-
 
 @bot.command()
 async def 급식(ctx, arg):  # 급식메뉴 기능 현재 보류중
     await ctx.send('아직 공사중,,')
 
-
 @bot.command()
 async def 코로나(ctx, arg):
-    covid = Covid_crawler()
-    embed = covid.crawling(arg)
+    covid = Covid_crawler(); embed = covid.crawling(arg)
     await ctx.send(embed=embed)
 
 @bot.command(pass_context=True)
 async def 신청(ctx, *, search_data):
+    search_title = []; search_rink = []
     
     def youtube_search(options):
         youtube = build(YOUTUBE_API_SERVICE_NAME, YOUTUBE_API_VERSION,
@@ -110,7 +108,6 @@ async def 신청(ctx, *, search_data):
                 search_rink.append('%s' % (search_result['id']['videoId']))
 
     if __name__ == '__main__':
-
         parser = argparse.ArgumentParser()
         parser.add_argument('--q', help='Search term', default='Google')
         parser.add_argument('--max-results', help='Max results', default=25)
@@ -122,12 +119,9 @@ async def 신청(ctx, *, search_data):
         except HttpError as e:
             print('An HTTP error %d occurred:\n%s' % (e.resp.status, e.content))
 
-    await ctx.send(f'''1.{search_title[0]}
-2.{search_title[1]}
-3.{search_title[2]}
-4.{search_title[3]}
-5.{search_title[4]}''')
-    
+    await ctx.send(f'''1.{search_title[0]}\n2.{search_title[1]}
+    3.{search_title[2]}\n4.{search_title[3]}\n5.{search_title[4]}''')
+
     def wrapper(context):
         
         def check_msg(message):
@@ -135,24 +129,41 @@ async def 신청(ctx, *, search_data):
             return context.author == message.author and context.channel == message.channel
         return check_msg
     
-    answer = await bot.wait_for("message", timeout=180, check=wrapper(ctx))
-    music_number = int(answer.content)
-    
-    for i in range(5):
+    while True:
+        answer = await bot.wait_for("message", timeout=180, check=wrapper(ctx))
 
-        if music_number == i+1:
-            music = Youtube_downloader()
-            music_title.append(search_title[i])
-            music.download(len(music_title), search_rink[i])
+        try:
+            search_number = int(answer.content)
 
-    channel = ctx.author.voice.channel
-    vc = await channel.connect()
-    vc.play(discord.FFmpegPCMAudio(f"Music_downloads/{len(music_title)} song.mp3"))
+        except ValueError:
+            continue
+
+        if 0 < int(answer.content) < 6:
+            search_number = int(answer.content)
+            break
+        
+    music = Youtube_downloader()
+    music.download(search_rink[search_number-1])
+    music_title.append(search_title[search_number-1])
+
+    if is_connected(ctx):
+        ctx.voice_client.play(discord.FFmpegPCMAudio(f"Music_download/song.mp3"))
+
+    else:
+        channel = ctx.author.voice.channel
+        vc = await channel.connect()
+        vc.play(discord.FFmpegPCMAudio(f"Music_download/song.mp3"))
 
 @bot.command(pass_context=True)
 async def 현재곡(ctx):
     embed = discord.Embed(title=f'{music_title[0]}', color=0x929292)
     await ctx.send(embed=embed)
+
+@bot.command(pass_context=True)
+async def 노래(ctx, arg):
+     
+     if arg == '초기화':
+         music_title.clear()
 
 @bot.command(pass_context=True)
 async def 날씨(ctx, *, args):
