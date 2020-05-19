@@ -20,10 +20,10 @@ class Youtube_downloader:
     def __init__(self):
         pass
     
-    def download(self, number, rink):
+    def download(self, rink):
 
         ydl_opts = {
-        'outtmpl': f'Music_downloads/{number} song.mp3',
+        'outtmpl': 'Music_download/song.mp3',
         'format': 'bestaudio/best',
         'postprocessors': [{
             'key': 'FFmpegExtractAudio',
@@ -33,6 +33,9 @@ class Youtube_downloader:
         'logger': MyLogger(),
         'progress_hooks': [my_hook],
         }
+        
+        if os.path.isfile('Music_download/song.mp3'):
+            os.remove('Music_download/song.mp3')
 
         with youtube_dl.YoutubeDL(ydl_opts) as ydl:
             ydl.download([f'https://www.youtube.com/watch?v={rink}'])
