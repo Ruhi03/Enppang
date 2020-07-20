@@ -3,10 +3,11 @@ import os
 import discord
 import asyncio
 import argparse
-
+'''
 from School_menu import School_menu
 from Crawlings import Covid_crawler
 from Crawlings import Weather_crawler
+'''
 from Youtube_download import Youtube_downloader
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
@@ -22,12 +23,17 @@ YOUTUBE_API_SERVICE_NAME = 'youtube'; YOUTUBE_API_VERSION = 'v3'
 
 bot = commands.Bot(command_prefix='[[')
 
-music_title = []; music_rink = []
+music_title = []; music_rink = []; music = Youtube_downloader()
 
 def is_connected(ctx):
     voice_client = discord.utils.get(ctx.bot.voice_clients, guild=ctx.guild)
     return voice_client and voice_client.is_connected()
 
+def wrapper(context):
+    def check_msg(message):
+        return context.author == message.author and context.channel == message.channel
+    return check_msg
+    
 @bot.event
 async def on_ready():
     print("\n{0} 작동!!!!!!!!!!!!!!! {0}\n".format(" * " * 10))
@@ -81,12 +87,12 @@ async def 나가(ctx):
 @bot.command()
 async def 급식(ctx, arg):  # 급식메뉴 기능 현재 보류중
     await ctx.send('아직 공사중,,')
-
+'''
 @bot.command()
 async def 코로나(ctx, arg):
     covid = Covid_crawler(); embed = covid.crawling(arg)
     await ctx.send(embed=embed)
-
+'''
 @bot.command(pass_context=True)
 async def 신청(ctx, *, search_data):
     search_title = []; search_rink = []
@@ -119,56 +125,67 @@ async def 신청(ctx, *, search_data):
         except HttpError as e:
             print('An HTTP error %d occurred:\n%s' % (e.resp.status, e.content))
 
-    await ctx.send(f'''1.{search_title[0]}\n2.{search_title[1]}
-    3.{search_title[2]}\n4.{search_title[3]}\n5.{search_title[4]}''')
+    await ctx.send(f"1.{search_title[0]}\n2.{search_title[1]}\n"\
+        f"3.{search_title[2]}\n4.{search_title[3]}\n5.{search_title[4]}")
 
-    def wrapper(context):
-        
-        def check_msg(message):
-            
-            return context.author == message.author and context.channel == message.channel
-        return check_msg
-    
     while True:
         answer = await bot.wait_for("message", timeout=180, check=wrapper(ctx))
 
-        try:
-            search_number = int(answer.content)
+        try: # 입력값이 1과 5사이의 정수인지 확인
+            if 0 < int(answer.content) < 6:
+                search_number = int(answer.content)
+                break
 
         except ValueError:
             continue
 
-        if 0 < int(answer.content) < 6:
-            search_number = int(answer.content)
-            break
-        
-    music = Youtube_downloader()
-    music.download(search_rink[search_number-1])
-    music_title.append(search_title[search_number-1])
+    if not music_title: # 노래 리스트가 비어 있다면
+        music_rink.append(search_rink[search_number-1])
+        music_title.append(search_title[search_number-1])
+        music.download(music_rink[0])
 
-    if is_connected(ctx):
-        ctx.voice_client.play(discord.FFmpegPCMAudio(f"Music_download/song.mp3"))
+        if is_connected(ctx): # 현재 통화채널에 접속해 있다면
+            ctx.voice_client.play(discord.FFmpegPCMAudio("song.mp3"))
 
+        else:
+            channel = ctx.author.voice.channel
+            vc = await channel.connect()
+            vc.play(discord.FFmpegPCMAudio("song.mp3"))
+    
     else:
-        channel = ctx.author.voice.channel
-        vc = await channel.connect()
-        vc.play(discord.FFmpegPCMAudio(f"Music_download/song.mp3"))
+        music_rink.append(search_rink[search_number-1])
+        music_title.append(search_title[search_number-1])
 
 @bot.command(pass_context=True)
-async def 현재곡(ctx):
-    embed = discord.Embed(title=f'{music_title[0]}', color=0x929292)
+async def 현재곡(ctx): # 현재 재생 중인 노래를 embed로 채팅 채널에 메시지를 보냄
+    embed = discord.Embed(title=f'{music_title[0]}',
+                            url=f'https://www.youtube.com/watch?v={music_rink[0]}')
     await ctx.send(embed=embed)
 
 @bot.command(pass_context=True)
-async def 노래(ctx, arg):
-     
-     if arg == '초기화':
-         music_title.clear()
+async def 스킵(ctx): # 노래를 스킵하고 리스트에 있는 다음 노래를 재생함
+    '''현재는 노래가 예약 돼 있어도 자동으로 넘어가지 않기 때문에 수동으로 스킵을 해야 함'''
+    if music_title: # 노래 리스트가 차 있으면
+        del music_title[0]
+        del music_rink[0]
+        music.download(music_rink[0])
 
+        if is_connected(ctx):
+            ctx.voice_client.play(discord.FFmpegPCMAudio("song.mp3"))
+
+        else:
+            channel = ctx.author.voice.channel
+            vc = await channel.connect()
+            vc.play(discord.FFmpegPCMAudio("song.mp3"))
+    
+    else:
+        await ctx.send('스킵할 노래가 없습니다!')
+'''
 @bot.command(pass_context=True)
 async def 날씨(ctx, *, args):
     a = Weather_crawler()
     embed = a.crawling(args)
     await ctx.send(embed=embed)
+'''
 
 bot.run(token)
