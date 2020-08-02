@@ -78,19 +78,26 @@ async def 신청(ctx, *, search_arg):
     await ctx.send("아래쪽에서 대기열에 넣을 음악을 골라주세요!!",embed=embed)
 
     while True:
-        answer = await bot.wait_for("message", timeout=180, check=wrapper(ctx))
+        answer = await bot.wait_for('message', timeout=30, check=wrapper(ctx))
+                #check=lambda message: not message.author.bot)  
 
         try: # 입력값이 1과 5사이의 정수인지 확인
             if 0 < int(answer.content) < 6:
                 search_number = int(answer.content)
                 break
 
-        except ValueError:
-            ctx.send("잘못 입력 하셨습니다. 다시 입력 해주세요!!")
+        except ValueError: # 정수가 아닌 것을 입력 할 경우
+            await ctx.send("잘못 입력 하셨습니다. 다시 입력 해주세요!!")
             continue
 
-    if not music_list: # 노래 리스트가 비어 있다면
-        music.download(search_result[1][0])
+        except TimeoutError: # 대답 시간을 초과하면
+            await ctx.send("시간이 초과되었어요 :cry:")
+            break
+
+    if music_list == [[],[]]: # 노래 리스트가 비어 있다면
+        music.download(search_result[1][search_number-1])
+        music_list[0].append(search_result[0][search_number-1])
+        music_list[1].append(search_result[1][search_number-1])
 
         if is_connected(ctx): # 현재 통화채널에 접속해 있다면
             ctx.voice_client.play(discord.FFmpegPCMAudio("song.mp3"))
@@ -101,8 +108,8 @@ async def 신청(ctx, *, search_arg):
             vc.play(discord.FFmpegPCMAudio("song.mp3"))
     
     else:
-        music_list[0].append(search_result[0][search_number])
-        music_list[1].append(search_result[1][search_number])
+        music_list[0].append(search_result[0][search_number-1])
+        music_list[1].append(search_result[1][search_number-1])
 
 @bot.command(pass_context=True)
 async def 현재곡(ctx): # 현재 재생 중인 노래를 embed로 채팅 채널에 메시지를 보냄
